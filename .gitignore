@@ -1,0 +1,25 @@
+# Data and model objects live on Cardinal scratch and Zenodo, not here
+*.rds
+*.rdata
+*.RData
+*.csv
+*.tif
+*.tiff
+*.db
+*.parquet
+*.feather
+
+# R session
+.Rhistory
+.Rproj.user/
+.RData
+
+# logs and job output
+*.log
+*.out
+*.err
+slurm-*.out
+
+# os
+.DS_Store
+_bundle.tgz
