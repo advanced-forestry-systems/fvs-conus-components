@@ -164,12 +164,15 @@ if (!all(keep_cols)) {
   X <- X[, keep_cols, drop = FALSE]
   cov_cols <- cov_cols[keep_cols]
 }
+scale_mean <- numeric(ncol(X)); scale_sd <- numeric(ncol(X))
 for (j in seq_len(ncol(X))) {
   m <- mean(X[, j], na.rm = TRUE)
   s_ <- sd(X[, j], na.rm = TRUE)
+  scale_mean[j] <- m; scale_sd[j] <- s_
   X[, j] <- (X[, j] - m) / s_
   X[is.na(X[, j]), j] <- 0  # any remaining NAs replaced with 0 (column mean post-standardization)
 }
+names(scale_mean) <- cov_cols; names(scale_sd) <- cov_cols  # saved in meta for exact out-of-sample prediction
 
 # Auto-detect traits_v3 (decomposed Potter VCC: CE + S + LAC) vs v2 (composite vuln_score + S)
 use_v3_traits <- all(c("climate_exposure", "low_adaptive_cap") %in% names(traits))
@@ -234,6 +237,10 @@ fit$save_object(file.path(OUT_DIR, paste0(OUT_NAME, "_fit.rds")))
 vars <- c(paste0("alpha_0[", 1:n_sp, "]"),
           paste0("b[", 1:ncol(X), "]"),
           paste0("gamma_int[", 1:ncol(W_sp), "]"),
+          ## gamma_cov is the trait x covariate matrix that drives the composition gradient;
+          ## it MUST be in the saved summary or the fit cannot predict out of sample.
+          paste0("gamma_cov[", rep(1:ncol(W_sp), times=ncol(X)), ",",
+                                rep(1:ncol(X), each=ncol(W_sp)), "]"),
           "sigma_alpha")
 vars <- intersect(vars, variables(fit$draws()))
 summ <- fit$summary(variables = vars, "mean","median","sd",
@@ -242,7 +249,8 @@ summ <- fit$summary(variables = vars, "mean","median","sd",
 names(summ)[names(summ) %in% c("5%","95%")] <- c("q5","q95")
 data.table::fwrite(summ, file.path(OUT_DIR, paste0(OUT_NAME, "_summary.csv")))
 saveRDS(list(form="multinomial_v1", sp_levels=sp_levels, trait_cols=trait_cols,
-             cov_cols=cov_cols, stan_file=STAN_FILE, summary=summ,
+             cov_cols=cov_cols, scale_mean=scale_mean, scale_sd=scale_sd,
+             stan_file=STAN_FILE, summary=summ,
              n_plots=stan_data$N_plots, n_sp=n_sp, wall_min=wm),
         file.path(OUT_DIR, paste0(OUT_NAME, "_meta.rds")))
 cat("Done.\n")
