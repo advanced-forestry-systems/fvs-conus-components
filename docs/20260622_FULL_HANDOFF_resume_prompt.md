@@ -129,3 +129,36 @@ a shrinkage blend w = n/(n+kappa). A Layer-2 disturbance/treatment modifier mult
 - The CR modifier decision is borderline (2.0 SE); revisit if the production refit shifts it.
 - Ingrowth Stan fits show frequent informational gamma_lpdf=0 rejections (mild ill-conditioning,
   non-fatal); check Rhat/ESS on completion.
+
+---
+
+## Decisions logged 2026-06-22 (Aaron)
+
+1. ENGINE INTEGRATION GREENLIT. Proceed with the coordinated integration as the next focused pass
+   (after the current jobs finish). The sequence:
+   a. Land the base species-free block into every variant config: 62c, dry-run preview then
+      production write (configs back up to .json.pre_mod / .pre_sf).
+   b. Land the modifier blocks: 62m, HCB trait-mediated (global+gamma+base_gamma), the other five
+      common, per modifiers/MODIFIER_LANDING_MANIFEST.md (exact summary paths there). Dry-run per
+      variant first.
+   c. Add the engine modifier hook AND inject the species-free growth/mortality/crown functions into
+      the fvs-modern Fortran engine (branch conus-sf-integration-2026-05-21). Use
+      projector/conus_eq_projector_v3.R as the executable specification (eta_dg_b1/b2, eta_mort,
+      cr_update, the fitted self-thinning, and the modifier mult form
+      exp(alpha_0 + alpha[type] + (traitmed ? W.gamma[type] : 0))).
+   d. Validate base x modifier and base species-free vs the regional variants on held-out disturbed
+      and undisturbed plots, by component.
+   Note: this is the make-or-break. The R projector is the validated reference; the Fortran port
+   should reproduce it stand-for-stand before claiming the unified variant.
+
+2. COMPOSITION REFIT SAVES ITS STANDARDIZATION. DONE in R/36: the meta now stores scale_mean and
+   scale_sd per covariate, and the summary now includes gamma_cov. The next composition refit will
+   carry both, so the FIX 2 recruitment predictor needs no seed-42 subsample replay. (The current
+   compos_v2_prod fit predates this; its complete coefficients were already extracted to
+   results/compos_v2_prod_gamma_cov_summary.csv.)
+
+3. HOLD AND WAIT. Do not launch the engine integration until the in-flight jobs finish:
+   ingrowth_hurdle_elpd (12012558) and ingrowth_negbinom_elpd (12012559) for the ELPD verdict and
+   the negbinom count coefficients (FIX 2 count half); v3_memtest_ne (12012580) confirming the
+   memory fix; and SN on hugemem (12004372) completing the v3 set. The ingrowth-jobs-monitor reports
+   these.
