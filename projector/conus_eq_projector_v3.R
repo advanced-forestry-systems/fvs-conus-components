@@ -47,6 +47,8 @@ NSTAND<-as.integer(ga("nstands","0")); SEED<-as.integer(ga("seed","7"))
 HORIZON<-as.integer(ga("horizon","100")); CYCLEN<-as.integer(ga("cyclelen","1")); NCYC<-as.integer(ga("ncycles",as.character(round(HORIZON/CYCLEN))))
 ## stand-level constraint coefficients (defaults from stand_state_v3_production.R, metric)
 CONSTRAIN<- !any(grepl("^--noconstrain$",args))
+## per-tree treelists are the memory hog and are not needed for the stand-level metrics; default OFF.
+WRITE_TRE<- any(grepl("^--treelists$",args))
 ST_RATE<-as.numeric(ga("st_rate","0.4525")); ST_EXP<-as.numeric(ga("st_exp","2.73"))
 BA_G0<-as.numeric(ga("ba_g0","0.0")); BA_G1<-as.numeric(ga("ba_g1","0.036")); BA_K<-as.numeric(ga("ba_k","0.0529"))
 STANDINIT_DIR<-ga("standinit_dir",file.path(SCR,"standinit_by_variant"))
@@ -330,7 +332,7 @@ for(stcode in names(state_groups)){
     emit<-function(cy){sm<-stand_metrics(tl); py<-cy*CYCLEN; ri<<-ri+1
       cchm<-if(MORTMODE=="gompit" && !is.null(tl$cch_last) && length(tl$cch_last)==length(tl$TPA) && sum(tl$TPA)>0) sum(tl$cch_last*tl$TPA)/sum(tl$TPA) else NA_real_
       rows[[ri]]<<-data.table(STAND_CN=cn,STATE=st,YEAR=inv_year+py,PROJ_YEAR=py,VARIANT=VARIANT,CONFIG=CONFIG,AGB_TONS_AC=NA_real_,BA_FT2AC=sm$BA,QMD_IN=sm$QMD,TPH=sm$TPH,CCH_MEAN=cchm)
-      ti<<-ti+1; treerows[[ti]]<<-data.table(STAND_CN=cn,CONFIG=CONFIG,PROJ_YEAR=py,SPCD=tl$SPCD,DBH_IN=tl$dbh_in,HT_M=tl$HT,TPA=tl$TPA)}
+      if(WRITE_TRE){ ti<<-ti+1; treerows[[ti]]<<-data.table(STAND_CN=cn,CONFIG=CONFIG,PROJ_YEAR=py,SPCD=tl$SPCD,DBH_IN=tl$dbh_in,HT_M=tl$HT,TPA=tl$TPA) }}
     emit(0)
     for(cy in 1:NCYC){
       ## --- tree-level diameter growth: annual increment * cyclelen ---
@@ -387,10 +389,11 @@ for(stcode in names(state_groups)){
       tl<-recompute_comp(tl); emit(cy)}
   }
 }
-out<-rbindlist(rows[seq_len(ri)]); tre<-rbindlist(treerows[seq_len(ti)]); otag<-sprintf("conus_eq_%s_%s",tolower(VARIANT),CONFIG)
-fwrite(out,file.path(OUTD,paste0(otag,"_metrics.csv"))); fwrite(tre,file.path(OUTD,paste0(otag,"_treelists.csv")))
+out<-rbindlist(rows[seq_len(ri)]); otag<-sprintf("conus_eq_%s_%s",tolower(VARIANT),CONFIG)
+fwrite(out,file.path(OUTD,paste0(otag,"_metrics.csv")))
+if(WRITE_TRE){ tre<-rbindlist(treerows[seq_len(ti)]); fwrite(tre,file.path(OUTD,paste0(otag,"_treelists.csv"))); cat("Wrote treelists (",nrow(tre),"rows )\n") }
 cat("\n  stands projected:",nproj,"\n")
-cat("Wrote:",file.path(OUTD,paste0(otag,"_metrics.csv")),"(",nrow(out),"rows )\n"); cat("Wrote:",file.path(OUTD,paste0(otag,"_treelists.csv")),"(",nrow(tre),"rows )\n")
+cat("Wrote:",file.path(OUTD,paste0(otag,"_metrics.csv")),"(",nrow(out),"rows )\n")
 cat("\n=== year 0/50/100 stand-mean metrics (",CONFIG,") ===\n")
 yrs<-intersect(c(0,50,100,max(out$PROJ_YEAR)),unique(out$PROJ_YEAR))
 print(out[PROJ_YEAR %in% yrs,.(BA=mean(BA_FT2AC,na.rm=TRUE),QMD=mean(QMD_IN,na.rm=TRUE),TPH=mean(TPH,na.rm=TRUE),n=.N),by=PROJ_YEAR])
