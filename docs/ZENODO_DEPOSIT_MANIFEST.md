@@ -43,3 +43,32 @@ before upload.
 
 The 100G `~/fvs-conus/output/` variant-run tree is regenerable from this repo plus the inputs
 above; do not archive it. Code is preserved in `holoros/fvs-conus-components`, not Zenodo.
+
+## Decision 2026-06-22: do NOT mint yet; staged, ready to execute at manuscript submission
+
+Per the zenodo-deposit skill, deposit at submission and backfill the publication DOI as a metadata
+update afterward. Minting now is premature: the DG residuals, stand-level fit objects, and ingrowth
+tables will change when the FIX 2 ingrowth swap and the engine integration land, which would force a
+v2. The big inputs (remeasurement pairs, SDImax tables) are also on home/scratch and not at
+purge risk in the near term, so there is no urgency to deposit early.
+
+### Execution recipe (when the manuscript is ready)
+Upload host: Cardinal (files exceed 5 GB collectively; use tmux). Staging root:
+/users/PUOM0008/crsfaaron/zenodo_staging/fvs-conus-components/zenodo_upload/. Token: ~/.zenodo_token
+(mode 600, already on Cardinal). Use the skill's scripts/upload_to_zenodo.py.
+
+1. Build zenodo_upload/ (README + data_dictionary via data-curator; CITATION.cff; zenodo_metadata.json).
+2. zenodo_metadata.json defaults for Aaron: upload_type=dataset; creators ORCID 0000-0003-2534-4478,
+   affiliation "University of Maine, Center for Research on Sustainable Forests"; license cc-by-4.0;
+   community forestry; access_right open; language eng; version 1.0.0. OMIT related_identifiers until
+   the publication DOI exists (placeholder DOIs 400-fail).
+3. files_to_upload.txt = absolute Cardinal paths from the table above (pairs, VAR_SDIMAX, brms_SDImax,
+   dg residuals, ingrowth tables, stand-level fit objects, plus the final fitted-equation summaries).
+4. tmux; module load python/3.11; pip install --user requests; python upload_to_zenodo.py
+   --token-file ~/.zenodo_token --metadata zenodo_metadata.json --files-list files_to_upload.txt
+   (add --sandbox for a dry run first; add --publish to mint).
+5. Backfill the minted DOI into the manuscript Data/Code Availability, CITATION.cff, and the repo,
+   then run update_metadata.py to add the publication DOI once the journal accepts.
+
+Related deposits to cross-link: the TreeMap max-SDI surface (10.5281/zenodo.19509367) and the
+cspi-conus site-index deposit (upstream inputs).
