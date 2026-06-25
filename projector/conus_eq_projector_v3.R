@@ -156,13 +156,22 @@ si[,STAND_CN:=sub("\\..*$","",STAND_CN)]
 si[,INV_YEAR:=suppressWarnings(as.integer(INV_YEAR))]; si[is.na(INV_YEAR),INV_YEAR:=2010L]
 si[,STATE:=suppressWarnings(as.integer(STATE))]
 si<-si[is.finite(STATE)&!is.na(STAND_CN)&STAND_CN!=""]
-## build covariate plot table from pairs (one row per FIA plot, any variant -> site covars)
-d<-as.data.table(readRDS(PAIRS))
-pl<-d[,.(bgi=first(bgi),cspi=first(cspi),cspi_v6=first(cspi_v6),SDImax_brms=first(SDImax_brms),
-  climate_si=first(climate_si),
-  EPA_L1_CODE=as.character(first(EPA_L1_CODE)),EPA_L2_CODE=as.character(first(EPA_L2_CODE)),
-  EPA_L3_CODE=as.character(first(EPA_L3_CODE)),FORTYPCD_cond1=as.character(first(FORTYPCD_cond1)),
-  LAT=first(LAT),LON=first(LON)),by=.(STATECD,COUNTYCD,PLOT)]
+## build covariate plot table from pairs (one row per FIA plot, any variant -> site covars).
+## The full pairs object is 8.2M rows x ~172 cols; loading it is the projector's memory floor.
+## Cache the slim per-plot table once and reuse it, so large variants run on modest memory.
+PLSLIM<-file.path(SCR,"conus_eq_proj",paste0("covariate_plot_table_",tools::file_path_sans_ext(basename(PAIRS)),".rds"))
+if(file.exists(PLSLIM)){
+  pl<-as.data.table(readRDS(PLSLIM)); cat("  loaded cached covariate plot table:",PLSLIM,"(",nrow(pl),"plots )\n")
+} else {
+  d<-as.data.table(readRDS(PAIRS))
+  pl<-d[,.(bgi=first(bgi),cspi=first(cspi),cspi_v6=first(cspi_v6),SDImax_brms=first(SDImax_brms),
+    climate_si=first(climate_si),
+    EPA_L1_CODE=as.character(first(EPA_L1_CODE)),EPA_L2_CODE=as.character(first(EPA_L2_CODE)),
+    EPA_L3_CODE=as.character(first(EPA_L3_CODE)),FORTYPCD_cond1=as.character(first(FORTYPCD_cond1)),
+    LAT=first(LAT),LON=first(LON)),by=.(STATECD,COUNTYCD,PLOT)]
+  rm(d); gc(verbose=FALSE)
+  tryCatch({ saveRDS(pl, PLSLIM); cat("  built + cached covariate plot table:",PLSLIM,"\n") }, error=function(e) cat("  (could not cache pl:",conditionMessage(e),")\n"))
+}
 modef<-function(x){x<-as.character(x);x<-x[!is.na(x)&x!=""]; if(!length(x))return(NA_character_); names(sort(table(x),decreasing=TRUE))[1]}
 ## county-median + state-median fallbacks
 cty<-pl[,.(bgi=median(bgi,na.rm=TRUE),cspi=median(cspi,na.rm=TRUE),cspi_v6=median(cspi_v6,na.rm=TRUE),
