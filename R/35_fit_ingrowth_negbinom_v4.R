@@ -241,6 +241,7 @@ summary_df <- fit$summary(variables = vars, "mean", "median", "sd",
 names(summary_df)[names(summary_df) %in% c("5%", "95%")] <- c("q5", "q95")
 data.table::fwrite(summary_df, summ_path)
 saveRDS(list(form = "negbinom_v2", trait_cols = trait_cols,
+             trait_means = trait_means, trait_sds = trait_sds,  # saved for out-of-sample prediction
              stan_file = STAN_FILE, L1_levels = L1_levels,
              L2_levels = L2_levels, L3_levels = L3_levels,
              summary = summary_df, n_plots = stan_data$N_plots,
