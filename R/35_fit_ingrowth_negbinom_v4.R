@@ -106,7 +106,11 @@ dat[is.na(bal_mean_t1), bal_mean_t1 := 0]
 dat[is.na(clim_pca1), clim_pca1 := 0]
 
 dat[, ln_ba    := log(ba_t1 + 1)]
-dat[, ln_bal   := log(bal_mean_t1 + 1)]
+## DECORRELATE: log(BAL_mean+1) is collinear with ln_ba (offsetting +4.81/-4.39 in the prior fit,
+## giving a backwards positive density->recruitment response). Replace with the BAL/BA ratio
+## (relative share of BA in larger trees), which is not collinear with total BA. Stan model
+## unchanged: b2 now multiplies this ratio (still passed in the ln_bal data slot).
+dat[, ln_bal   := bal_mean_t1 / pmax(ba_t1, 0.01)]
 dat[, ln_csi   := log(pmax(climate_si, 0.01))]
 dat[, ln_ht40  := log(ht40_t1 + 1)]
 dat[, log_years := log(years)]
